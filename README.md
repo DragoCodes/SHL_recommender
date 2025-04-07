@@ -18,7 +18,7 @@ The system follows this pipeline:
 
 *   **Live Demo (API Docs)**: [https://shl-recommendation-abc123-uc.a.run.app/docs](https://shl-recommendation-abc123-uc.a.run.app/docs)
 *   **API Endpoint**: [https://shl-recommendation-abc123-uc.a.run.app/recommend](https://shl-recommendation-abc123-uc.a.run.app/recommend)
-*   **Source Code**: [https://github.com/drago-codes/shl-recommendation](https://github.com/drago-codes/shl-recommendation)
+*   **Source Code**: [https://github.com/DragoCodes/SHL_recommender](https://github.com/DragoCodes/SHL_recommender)
 
 ## Setup and Installation
 
