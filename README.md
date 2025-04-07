@@ -13,11 +13,7 @@ The system follows this pipeline:
 5.  **API (`api.py`)**: Exposes the recommendation logic via a FastAPI endpoint.
 6.  **Frontend (`app.py`)**: Provides an optional Streamlit interface for interaction (run locally).
 7.  **DockerFile (`Dockerfile`)**: Dockerfile for building and serving FastAPI app.
-
-## URLs
-
-*   **Live Demo (API Docs)**: [https://shl-recommendation-1050995543702.us-central1.run.app/docs](https://shl-recommendation-1050995543702.us-central1.run.app/docs)
-*   **API Endpoint**: [https://shl-recommendation-1050995543702.us-central1.run.app/recommend](https://shl-recommendation-1050995543702.us-central1.run.app/recommend)
+   
 *   **Source Code**: [https://github.com/DragoCodes/SHL_recommender](https://github.com/DragoCodes/SHL_recommender)
 
 ## Setup and Installation
