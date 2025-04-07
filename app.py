@@ -8,7 +8,7 @@ st.set_page_config(
 )
 
 # API endpoint
-API_URL = "http://localhost:8000/recommend"
+API_URL = "http://localhost:8080/recommend"
 
 
 def get_recommendations(query, max_results=10):
@@ -27,7 +27,7 @@ def get_recommendations(query, max_results=10):
 def check_api_health():
     """Check if the API is available"""
     try:
-        response = requests.get("http://localhost:8000/health")
+        response = requests.get("http://localhost:8080/health")
         return response.status_code == 200
     except:
         return False
