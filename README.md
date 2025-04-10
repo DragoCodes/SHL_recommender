@@ -8,11 +8,12 @@ The system follows this pipeline:
 
 1.  **Scrape (`scraper.py`)**: Extracts assessment data from the SHL catalog.
 2.  **CSV Output**: Stores the scraped data temporarily.
-3.  **Index (`prep.py`)**: Processes the data and creates a FAISS vector index for efficient retrieval.
-4.  **RAG (`engine2.py`)**: Combines retrieved assessments (using the FAISS index) with a Large Language Model (Gemini) to generate relevant recommendations based on the user query.
-5.  **API (`api.py`)**: Exposes the recommendation logic via a FastAPI endpoint.
-6.  **Frontend (`app.py`)**: Provides an optional Streamlit interface for interaction (run locally).
-7.  **DockerFile (`Dockerfile`)**: Dockerfile for building and serving FastAPI app.
+3.  **Modify (`modification.py`)**: Modify the csv data into desired format.
+4.  **Index (`prep.py`)**: Processes the data and creates a FAISS vector index for efficient retrieval.
+5.  **RAG (`engine2.py`)**: Combines retrieved assessments (using the FAISS index) with a Large Language Model (Gemini) to generate relevant recommendations based on the user query.
+6.  **API (`api.py`)**: Exposes the recommendation logic via a FastAPI endpoint.
+7.  **Frontend (`app.py`)**: Provides an optional Streamlit interface for interaction (run locally).
+8.  **DockerFile (`Dockerfile`)**: Dockerfile for building and serving FastAPI app.
    
 *   **Source Code**: [https://github.com/DragoCodes/SHL_recommender](https://github.com/DragoCodes/SHL_recommender)
 
@@ -61,7 +62,7 @@ Follow these steps to set up and run the project locally or deploy it.
     export GOOGLE_API_KEY="your_key"
 
     # Build the Docker image
-    docker build -t shl-recommendation .
+    docker build --platform linux/amd64 -t shl-recommendation .
 
     # Run the Docker container
     docker run -p 8080:8080 --env GOOGLE_API_KEY="$GOOGLE_API_KEY" shl-recommendation
