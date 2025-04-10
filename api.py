@@ -1,11 +1,9 @@
-from typing import List, Optional
+from typing import List
 
+from engine2 import SHLRecommendationEngine
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from starlette.responses import JSONResponse
-
-from engine2 import SHLRecommendationEngine
 
 app = FastAPI(
     title="SHL Assessment Recommendation API",
@@ -28,32 +26,26 @@ engine = None
 
 class RecommendationRequest(BaseModel):
     query: str
-    max_results: Optional[int] = 10
 
     class Config:
         schema_extra = {
             "example": {
-                "query": "I am hiring for Java developers who can also collaborate effectively with my business teams. Looking for assessment(s) that can be completed in 40 minutes.",
-                "max_results": 5,
+                "query": "I am hiring for Java developers who can also collaborate effectively with my business teams. Looking for assessment(s) that can be completed in 40 minutes."
             }
         }
 
 
 class Assessment(BaseModel):
-    assessment_name: str
     url: str
-    remote_testing_support: str
-    adaptive_irt_support: str
-    duration: str
-    test_type: str
+    adaptive_support: str
+    description: str
+    duration: int
+    remote_support: str
+    test_type: List[str]
 
 
 class RecommendationResponse(BaseModel):
-    recommendations: List[Assessment]
-
-
-class ErrorResponse(BaseModel):
-    error: str
+    recommended_assessments: List[Assessment]
 
 
 def get_engine():
@@ -76,23 +68,50 @@ def get_engine():
 @app.post(
     "/recommend",
     response_model=RecommendationResponse,
-    responses={
-        200: {"description": "Successful response", "model": RecommendationResponse},
-        500: {"description": "Internal server error", "model": ErrorResponse},
-    },
 )
 async def get_recommendations(
     request: RecommendationRequest,
     engine: SHLRecommendationEngine = Depends(get_engine),
 ):
     """
-    Get SHL assessment recommendations based on job requirements
-
-    - **query**: Job description and requirements
-    - **max_results**: Maximum number of recommendations to return
+    Get SHL assessment recommendations based on job requirements or natural language query.
     """
     try:
-        results = engine.recommend(request.query, request.max_results)
+        # Set max_results to 10 as per requirements
+        results = engine.recommend(request.query, max_results=10)
+
+        # Ensure the response follows the required format
+        # If the engine returns a different format, transform it here
+        if "recommended_assessments" not in results:
+            if "recommendations" in results:
+                # Handle case where engine returns with "recommendations" key
+                assessments = results["recommendations"]
+                formatted_assessments = []
+
+                for assessment in assessments:
+                    formatted_assessment = {
+                        "url": assessment.get("url", ""),
+                        "adaptive_support": assessment.get(
+                            "adaptive_irt_support", "No"
+                        ),
+                        "description": assessment.get("assessment_name", ""),
+                        "duration": int(assessment.get("duration", 0))
+                        if assessment.get("duration")
+                        else 0,
+                        "remote_support": assessment.get(
+                            "remote_testing_support", "No"
+                        ),
+                        "test_type": [assessment.get("test_type", "Unknown")]
+                        if isinstance(assessment.get("test_type"), str)
+                        else assessment.get("test_type", ["Unknown"]),
+                    }
+                    formatted_assessments.append(formatted_assessment)
+
+                return {"recommended_assessments": formatted_assessments}
+            else:
+                # Handle other cases
+                return {"recommended_assessments": []}
+
         return results
     except Exception as e:
         raise HTTPException(
@@ -100,41 +119,12 @@ async def get_recommendations(
         )
 
 
-@app.get(
-    "/health",
-    responses={
-        200: {"description": "API is healthy"},
-        500: {"description": "API is unhealthy", "model": ErrorResponse},
-    },
-)
-async def health_check(engine: SHLRecommendationEngine = Depends(get_engine)):
+@app.get("/health")
+async def health_check():
     """
-    Check if the API and recommendation engine are healthy
+    Health check endpoint to verify the API is running.
     """
-    try:
-        # Simple query to test if the engine is working
-        test_query = "Test health check"
-        engine.retriever.get_relevant_documents(test_query)
-        return {"status": "healthy", "message": "Recommendation engine is operational"}
-    except Exception as e:
-        return JSONResponse(
-            status_code=500, content={"status": "unhealthy", "error": str(e)}
-        )
-
-
-@app.get("/")
-async def root():
-    """
-    Root endpoint with API information
-    """
-    return {
-        "api": "SHL Assessment Recommendation API",
-        "version": "1.0.0",
-        "endpoints": {
-            "POST /recommend": "Get SHL assessment recommendations",
-            "GET /health": "Check API health status",
-        },
-    }
+    return {"status": "healthy"}
 
 
 if __name__ == "__main__":

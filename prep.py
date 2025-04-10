@@ -12,7 +12,7 @@ load_dotenv()  # Load environment variables from .env file
 
 
 def prepare_data(
-    csv_file="/Users/drago_codes/Documents/Data_Sci_ALL/SHL /shl_catalog_detailed.csv",
+    csv_file="transformed_data.csv",
     use_local_embeddings=True,
 ):
     """
@@ -30,25 +30,25 @@ def prepare_data(
             df[col] = df[col].fillna(0)
 
     # Convert boolean strings to actual booleans if needed
+    if "adaptive_support" in df.columns:
+        df["adaptive_support"] = df["adaptive_support"].astype(str)
     if "remote_support" in df.columns:
-        df["remote_support"] = (
-            df["remote_support"].astype(str).map({"True": "Yes", "False": "No"})
-        )
-    if "irt_support" in df.columns:
-        df["irt_support"] = (
-            df["irt_support"].astype(str).map({"True": "Yes", "False": "No"})
-        )
+        df["remote_support"] = df["remote_support"].astype(str)
+
+    # Extract title from URL
+    df["title"] = df["url"].apply(
+        lambda url: url.split("/")[-2].replace("-", " ").title()
+    )
 
     # Create rich text for embedding
     df["combined_text"] = df.apply(
         lambda row: f"Title: {row['title']}\n"
         f"Test Type: {row['test_type']}\n"
         f"Description: {row['description']}\n"
-        f"Job Levels: {row['job_levels']}\n"
-        f"Languages: {row['languages']}\n"
-        f"Assessment Length: {row['assessment_length']} minutes\n"
+        f"Assessment Length: {row['duration']} minutes\n"
         f"Remote Testing Support: {row['remote_support']}\n"
-        f"Adaptive/IRT Support: {row['irt_support']}",
+        f"Adaptive Support: {row['adaptive_support']}\n"
+        f"URL: {row['url']}",
         axis=1,
     )
 

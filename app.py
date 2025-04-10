@@ -11,17 +11,15 @@ st.set_page_config(
 API_URL = "http://localhost:8080/recommend"
 
 
-def get_recommendations(query, max_results=10):
+def get_recommendations(query):
     """Call the recommendation API and return results"""
     try:
-        response = requests.post(
-            API_URL, json={"query": query, "max_results": max_results}
-        )
+        response = requests.post(API_URL, json={"query": query})
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         st.error(f"API Error: {str(e)}")
-        return {"recommendations": []}
+        return {"recommended_assessments": []}
 
 
 def check_api_health():
@@ -56,10 +54,6 @@ with st.form("recommendation_form"):
         placeholder="Example: I am hiring for Java developers who can also collaborate effectively with my business teams. Looking for an assessment that can be completed in 40 minutes.",
     )
 
-    col1, col2 = st.columns(2)
-    with col1:
-        max_results = st.slider("Maximum number of recommendations", 1, 20, 5)
-
     submitted = st.form_submit_button("Get Recommendations")
 
 # Show example queries
@@ -75,36 +69,43 @@ with st.expander("Example queries you can try"):
 if submitted and query:
     with st.spinner("Generating recommendations, please wait..."):
         # Get recommendations from API
-        results = get_recommendations(query, max_results)
+        results = get_recommendations(query)
 
-    if results and "recommendations" in results and results["recommendations"]:
-        st.success(f"Found {len(results['recommendations'])} recommendations!")
+    if (
+        results
+        and "recommended_assessments" in results
+        and results["recommended_assessments"]
+    ):
+        st.success(f"Found {len(results['recommended_assessments'])} recommendations!")
 
         # Display results in an attractive way
-        for i, rec in enumerate(results["recommendations"], 1):
+        for i, rec in enumerate(results["recommended_assessments"], 1):
             with st.container():
                 col1, col2 = st.columns([2, 1])
 
                 with col1:
-                    st.subheader(f"{i}. {rec['assessment_name']}")
-                    st.markdown(f"**Type:** {rec['test_type']}")
-                    # Check if relevance_explanation exists, if not provide default
-                    if "relevance_explanation" in rec:
-                        st.markdown(
-                            f"**Why it's relevant:** {rec['relevance_explanation']}"
-                        )
+                    st.subheader(f"{i}. {rec.get('description', 'Unnamed Assessment')}")
+                    st.markdown(
+                        f"**Type:** {', '.join(rec.get('test_type', ['Unknown']))}"
+                    )
 
                 with col2:
-                    st.markdown(f"**Duration:** {rec['duration']}")
-                    st.markdown(f"**Remote Testing:** {rec['remote_testing_support']}")
-                    st.markdown(f"**Adaptive IRT:** {rec['adaptive_irt_support']}")
-                    if rec["url"] and rec["url"] != "Not Found":
+                    st.markdown(
+                        f"**Duration:** {rec.get('duration', 'Unknown')} minutes"
+                    )
+                    st.markdown(
+                        f"**Remote Testing:** {rec.get('remote_support', 'Unknown')}"
+                    )
+                    st.markdown(
+                        f"**Adaptive Support:** {rec.get('adaptive_support', 'Unknown')}"
+                    )
+                    if rec.get("url") and rec.get("url") != "Not Found":
                         st.markdown(f"[View Assessment]({rec['url']})")
 
                 st.markdown("---")
 
         # Also provide a download option as CSV
-        df = pd.DataFrame(results["recommendations"])
+        df = pd.DataFrame(results["recommended_assessments"])
         csv = df.to_csv(index=False)
         st.download_button(
             label="Download Results as CSV",

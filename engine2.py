@@ -61,7 +61,6 @@ class SHLRecommendationEngine:
         )
         self._setup_rag_chain()
 
-    # Rest of your code ( `_setup_rag_chain` and `recommend`) remains unchanged
     def _setup_rag_chain(self):
         """Set up the RAG chain for processing queries"""
         template = """
@@ -85,19 +84,21 @@ class SHLRecommendationEngine:
         Provide a JSON object with your recommendations in this format:
         ```json
         {{
-          "recommendations": [
+          "recommended_assessments": [
             {{
-              "assessment_name": "Name of the assessment",
               "url": "URL to the assessment",
-              "remote_testing_support": "Yes or No",
-              "adaptive_irt_support": "Yes or No",
-              "duration": "Duration in minutes",
-              "test_type": "Type of test",
+              "adaptive_support": "Yes or No",
+              "description": "Description of the assessment",
+              "duration": 30,
+              "remote_support": "Yes or No",
+              "test_type": ["Category1", "Category2"]
             }}
           ]
         }}
         ```
 
+        The duration field should be an integer, not a string.
+        The test_type field should be an array of strings, even if there's only one type.
         Return only the JSON object, no additional text outside the json markers.
         """
         prompt = ChatPromptTemplate.from_template(template)
@@ -130,64 +131,98 @@ class SHLRecommendationEngine:
             except json.JSONDecodeError as json_err:
                 print(f"Failed to parse JSON: {json_err}")
                 print("Attempting fallback regex parsing...")
-                json_pattern = r'{\s*"recommendations"\s*:\s*\[(.*?)\]\s*}'
+                json_pattern = r'{\s*"recommended_assessments"\s*:\s*\[(.*?)\]\s*}'
                 match = re.search(json_pattern, raw_response, re.DOTALL)
                 if match:
                     print("Fallback regex found potential recommendations structure.")
-                    recommendations = {"recommendations": []}
+                    recommendations = {"recommended_assessments": []}
                     item_pattern = r"{\s*(.*?)}"
                     items_content = re.findall(item_pattern, match.group(1), re.DOTALL)
 
                     for item_str in items_content:
                         rec = {}
                         for field in [
-                            "assessment_name",
                             "url",
-                            "remote_testing_support",
-                            "adaptive_irt_support",
+                            "adaptive_support",
+                            "description",
                             "duration",
+                            "remote_support",
                             "test_type",
                         ]:
-                            field_match = re.search(
-                                rf'"{field}"\s*:\s*"(.*?)"', item_str
-                            )
-                            if field_match:
-                                rec[field] = field_match.group(1).strip()
-                            else:
-                                field_match_no_quotes = re.search(
-                                    rf'"{field}"\s*:\s*([^,}}]+)', item_str
+                            if field == "test_type":
+                                # Handle test_type as array
+                                field_match = re.search(
+                                    rf'"{field}"\s*:\s*\[(.*?)\]', item_str, re.DOTALL
                                 )
-                                if field_match_no_quotes:
-                                    rec[field] = (
-                                        field_match_no_quotes.group(1)
-                                        .strip()
-                                        .replace('"', "")
-                                    )
+                                if field_match:
+                                    types_str = field_match.group(1).strip()
+                                    types_list = re.findall(r'"([^"]+)"', types_str)
+                                    rec[field] = types_list
                                 else:
-                                    rec[field] = "Not Found"
-                        if rec.get("assessment_name") != "Not Found":
-                            recommendations["recommendations"].append(rec)
+                                    rec[field] = []
+                            elif field == "duration":
+                                # Handle duration as integer
+                                field_match = re.search(
+                                    rf'"{field}"\s*:\s*(\d+)', item_str
+                                )
+                                if field_match:
+                                    rec[field] = int(field_match.group(1).strip())
+                                else:
+                                    rec[field] = 0
+                            else:
+                                # Handle string fields
+                                field_match = re.search(
+                                    rf'"{field}"\s*:\s*"(.*?)"', item_str
+                                )
+                                if field_match:
+                                    rec[field] = field_match.group(1).strip()
+                                else:
+                                    rec[field] = ""
+                        if rec.get("url") != "":
+                            recommendations["recommended_assessments"].append(rec)
                 else:
                     print("Fallback regex parsing failed to find structure.")
-                    recommendations = {"recommendations": []}
+                    recommendations = {"recommended_assessments": []}
+
+            # Ensure output has correct key
+            if (
+                "recommendations" in recommendations
+                and "recommended_assessments" not in recommendations
+            ):
+                recommendations["recommended_assessments"] = recommendations.pop(
+                    "recommendations"
+                )
 
             # Limit to max_results
-            if "recommendations" in recommendations:
-                recommendations["recommendations"] = recommendations["recommendations"][
-                    :max_results
-                ]
+            if "recommended_assessments" in recommendations:
+                recommendations["recommended_assessments"] = recommendations[
+                    "recommended_assessments"
+                ][:max_results]
                 print(
-                    f"Found {len(recommendations['recommendations'])} recommendations after parsing and filtering."
+                    f"Found {len(recommendations['recommended_assessments'])} recommendations after parsing and filtering."
                 )
             else:
-                print("No 'recommendations' key found in parsed output.")
-                recommendations = {"recommendations": []}
+                print("No 'recommended_assessments' key found in parsed output.")
+                recommendations = {"recommended_assessments": []}
+
+            # Ensure correct data types
+            for rec in recommendations.get("recommended_assessments", []):
+                if "duration" in rec and not isinstance(rec["duration"], int):
+                    try:
+                        rec["duration"] = int(rec["duration"])
+                    except (ValueError, TypeError):
+                        rec["duration"] = 0
+
+                if "test_type" in rec and not isinstance(rec["test_type"], list):
+                    if isinstance(rec["test_type"], str):
+                        rec["test_type"] = [rec["test_type"]]
+                    else:
+                        rec["test_type"] = []
 
             return recommendations
         except Exception as e:
             print(f"Error processing query in recommend method: {e}")
-            print(f"Raw response at time of error: {raw_response}")
-            return {"error": str(e), "recommendations": []}
+            return {"error": str(e), "recommended_assessments": []}
 
 
 if __name__ == "__main__":
